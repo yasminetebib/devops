@@ -2,26 +2,34 @@ pipeline {
     agent any
 
     tools {
-        jdk 'JAVA_HOME'
-        maven 'Maven3'
+        // Déclare les outils installés sur Jenkins
+        jdk 'JAVA_HOME'       // Ton JDK installé dans Jenkins
+        maven 'Maven3'        // Ton Maven installé dans Jenkins
     }
 
     environment {
-        DOCKER_IMAGE = "yasminetebib/devops"
-        SONAR_HOST_URL = "http://192.168.33.10:9000"
+        DOCKER_IMAGE = "yasminetebib/devops:latest"  // Nom et tag de ton image Docker
+        SONAR_HOST_URL = "http://192.168.33.10:9000" // IP de ta VM SonarQube
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('SCM Checkout') {
             steps {
-                checkout scm
+                // Récupérer le code depuis Git
+                git branch: 'main', url: 'https://github.com/yasminetebib/devops.git'
             }
         }
 
-        stage('Build & Test') {
+        stage('Build: Clean & Compile') {
             steps {
-                sh 'mvn clean verify'
+                sh 'mvn clean compile'
+            }
+        }
+
+        stage('Package & Install') {
+            steps {
+                sh 'mvn package install -DskipTests'
             }
         }
 
@@ -30,9 +38,9 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     sh """
                     mvn sonar:sonar \
-                    -Dsonar.projectKey=devops \
-                    -Dsonar.projectName=devops \
-                    -Dsonar.host.url=${SONAR_HOST_URL}
+                        -Dsonar.projectKey=devops \
+                        -Dsonar.projectName=devops \
+                        -Dsonar.host.url=${SONAR_HOST_URL}
                     """
                 }
             }
@@ -40,8 +48,25 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE .'
+                sh "docker build -t ${DOCKER_IMAGE} ."
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                // Connecte-toi à ton registre Docker si nécessaire
+                sh "docker push ${DOCKER_IMAGE}"
             }
         }
     }
+
+    post {
+        success {
+            echo 'Pipeline terminé avec succès ! '
+        }
+        failure {
+            echo 'Pipeline échoué '
+        }
+    }
 }
+
