@@ -6,25 +6,41 @@ pipeline {
         maven 'Maven3'
     }
 
+    environment {
+        DOCKER_IMAGE = "yasminetebib/devops"
+        SONAR_HOST_URL = "http://192.168.33.10:9000"
+    }
+
     stages {
 
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/yasminetebib/devops.git'
+                checkout scm
             }
         }
 
-        stage('Build') {
+        stage('Build & Test') {
             steps {
-                sh 'mvn clean compile'
+                sh 'mvn clean verify'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=devops -Dsonar.projectName=devops'
+                    sh """
+                    mvn sonar:sonar \
+                    -Dsonar.projectKey=devops \
+                    -Dsonar.projectName=devops \
+                    -Dsonar.host.url=${SONAR_HOST_URL}
+                    """
                 }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh 'docker build -t $DOCKER_IMAGE .'
             }
         }
     }
