@@ -2,13 +2,13 @@ pipeline {
     agent any
 
     tools {
-        jdk 'JAVA_HOME'       // Ton JDK installé dans Jenkins
-        maven 'Maven3'        // Ton Maven installé dans Jenkins
+        jdk 'JAVA_HOME'
+        maven 'Maven3'
     }
 
     environment {
-        DOCKER_IMAGE = "yasminetebib/devops:latest"  // Nom et tag de ton image Docker
-        SONAR_HOST_URL = "http://127.0.0.1:9000"    // URL de ton SonarQube
+        DOCKER_IMAGE = "yasminetebib/devops:latest"
+        SONAR_HOST_URL = "http://127.0.0.1:9000"
     }
 
     stages {
@@ -33,12 +33,16 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                sh """
-                    mvn sonar:sonar \
-                        -Dsonar.projectKey=devops \
-                        -Dsonar.projectName=devops \
-                        -Dsonar.host.url=${SONAR_HOST_URL}
-                """
+                // Utilisation du token stocké dans Jenkins
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh """
+                        mvn sonar:sonar \
+                            -Dsonar.projectKey=devops \
+                            -Dsonar.projectName=devops \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.login=$SONAR_TOKEN
+                    """
+                }
             }
         }
 
