@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('sonar-token') // Ton token SonarQube
-        IMAGE_NAME = "tebibyasmine/devops:latest" // Mets ici le nom exact de ton repo Docker Hub
+        SONAR_TOKEN = credentials('sonar-token')
+        IMAGE_NAME = "tebibyasmine/devops:latest"
     }
 
     stages {
@@ -15,7 +15,6 @@ pipeline {
 
         stage('Maven Build') {
             steps {
-                // Compile et package le projet en ignorant les tests
                 sh 'mvn clean package install -DskipTests'
             }
         }
@@ -25,31 +24,32 @@ pipeline {
                 SONAR_HOST_URL = 'http://localhost:9000'
             }
             steps {
+                // Utilisation sécurisée du token sans interpolation
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    sh """
+                    sh '''
                         mvn sonar:sonar \
                         -Dsonar.projectKey=devopss \
                         -Dsonar.projectName=devopss \
                         -Dsonar.host.url=$SONAR_HOST_URL \
-                        -Dsonar.login=$SONAR_TOKEN
-                    """
+                        -Dsonar.token=$SONAR_TOKEN
+                    '''
                 }
             }
         }
 
         stage('Docker Build') {
             steps {
-                // Build l'image Docker
                 sh "docker build -t $IMAGE_NAME ."
             }
         }
 
         stage('Docker Push') {
             steps {
-                // Authentification Docker Hub et push
                 withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
-                    sh "docker push $IMAGE_NAME"
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push $IMAGE_NAME
+                    '''
                 }
             }
         }
