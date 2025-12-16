@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "yasminetebib/devops:latest"
-        SONAR_HOST_URL = "http://127.0.0.1:9000"
+        SONAR_HOST_URL = "http://localhost:9000" // mis à jour pour correspondre à ton test
     }
 
     stages {
@@ -40,7 +40,7 @@ pipeline {
                             -Dsonar.projectKey=devops \
                             -Dsonar.projectName=devops \
                             -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.login=$SONAR_TOKEN
+                            -Dsonar.login=${SONAR_TOKEN}
                     """
                 }
             }
@@ -54,6 +54,7 @@ pipeline {
 
         stage('Docker Push') {
             steps {
+                // Si tu n’as pas encore fait docker login, assure-toi de l’ajouter avant
                 sh "docker push ${DOCKER_IMAGE}"
             }
         }
@@ -61,10 +62,10 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline terminé avec succès !'
+            echo 'Pipeline terminé avec succès ! ✅'
         }
         failure {
-            echo 'Pipeline échoué'
+            echo 'Pipeline échoué ❌'
         }
     }
 }
