@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         SONAR_TOKEN = credentials('sonar-token') // Ton token SonarQube
-        IMAGE_NAME = "yasminetebib/devops:latest"
+        IMAGE_NAME = "tebibyasmine/devops:latest" // Mets ici le nom exact de ton repo Docker Hub
     }
 
     stages {
@@ -22,27 +22,35 @@ pipeline {
 
         stage('SonarQube Analysis') {
             environment {
-                // On utilise le token Sonar
                 SONAR_HOST_URL = 'http://localhost:9000'
             }
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    sh "mvn sonar:sonar -Dsonar.projectKey=devopss -Dsonar.projectName=devopss -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN"
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=devopss \
+                        -Dsonar.projectName=devopss \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.login=$SONAR_TOKEN
+                    """
                 }
             }
         }
 
         stage('Docker Build') {
             steps {
-                // On build avec l'image déjà existante
+                // Build l'image Docker
                 sh "docker build -t $IMAGE_NAME ."
             }
         }
 
         stage('Docker Push') {
             steps {
-                // Push sur Docker Hub
-                sh "docker push $IMAGE_NAME"
+                // Authentification Docker Hub et push
+                withCredentials([usernamePassword(credentialsId: 'docker-hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+                    sh "docker push $IMAGE_NAME"
+                }
             }
         }
     }
