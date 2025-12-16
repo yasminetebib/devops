@@ -1,71 +1,58 @@
 pipeline {
     agent any
 
-    tools {
-        jdk 'JAVA_HOME'
-        maven 'Maven3'
-    }
-
     environment {
-        DOCKER_IMAGE = "yasminetebib/devops:latest"
-        SONAR_HOST_URL = "http://localhost:9000" // mis à jour pour correspondre à ton test
+        SONAR_TOKEN = credentials('sonar-token') // Ton token SonarQube
+        IMAGE_NAME = "yasminetebib/devops:latest"
     }
 
     stages {
-
-        stage('SCM Checkout') {
+        stage('Checkout SCM') {
             steps {
                 git branch: 'main', url: 'https://github.com/yasminetebib/devops.git'
             }
         }
 
-        stage('Build: Clean & Compile') {
+        stage('Maven Build') {
             steps {
-                sh 'mvn clean compile'
-            }
-        }
-
-        stage('Package & Install') {
-            steps {
-                sh 'mvn package install -DskipTests'
+                // Compile et package le projet en ignorant les tests
+                sh 'mvn clean package install -DskipTests'
             }
         }
 
         stage('SonarQube Analysis') {
+            environment {
+                // On utilise le token Sonar
+                SONAR_HOST_URL = 'http://localhost:9000'
+            }
             steps {
-                // Utilisation du token stocké dans Jenkins
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    sh """
-                        mvn sonar:sonar \
-                            -Dsonar.projectKey=devopss \
-                            -Dsonar.projectName=devopss \
-                            -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.login=${SONAR_TOKEN}
-                    """
+                    sh "mvn sonar:sonar -Dsonar.projectKey=devopss -Dsonar.projectName=devopss -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN"
                 }
             }
         }
 
         stage('Docker Build') {
             steps {
-                sh "docker build -t ${DOCKER_IMAGE} ."
+                // On build avec l'image déjà existante
+                sh "docker build -t $IMAGE_NAME ."
             }
         }
 
         stage('Docker Push') {
             steps {
-                // Si tu n’as pas encore fait docker login, assure-toi de l’ajouter avant
-                sh "docker push ${DOCKER_IMAGE}"
+                // Push sur Docker Hub
+                sh "docker push $IMAGE_NAME"
             }
         }
     }
 
     post {
         success {
-            echo 'Pipeline terminé avec succès ! ✅'
+            echo "Pipeline réussie ✅"
         }
         failure {
-            echo 'Pipeline échoué ❌'
+            echo "Pipeline échouée ❌"
         }
     }
 }
